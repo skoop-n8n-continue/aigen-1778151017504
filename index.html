@@ -37,16 +37,17 @@
             --bg-light: #1a2632;
         }
 
-        body {
+        html, body {
             margin: 0;
             padding: 0;
+            width: 100%;
+            height: 100%;
             background: linear-gradient(135deg, var(--bg-dark), var(--bg-light));
             color: white;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
             overflow: hidden;
             touch-action: none;
         }
@@ -264,8 +265,18 @@ let poppingBubbles = [];
 let mouse = { x: GAME.logicalWidth / 2, y: GAME.logicalHeight / 2, active: false };
 
 // Audio setup (using synthetic beeps via Web Audio API to keep it zero-dependency)
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let audioCtx = null;
+try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) {
+        audioCtx = new AudioContext();
+    }
+} catch (e) {
+    console.warn("AudioContext not supported", e);
+}
+
 function playSound(type) {
+    if (!audioCtx) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -302,8 +313,15 @@ function playSound(type) {
 // Resize canvas to match container while maintaining logical coordinates
 function resize() {
     const container = document.getElementById('game-container');
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
+    let cw = container.clientWidth;
+    let ch = container.clientHeight;
+
+    // Fallbacks if container has no dimensions yet
+    if (!cw || cw === 0) cw = window.innerWidth || 320;
+    if (!ch || ch === 0) ch = window.innerHeight || 480;
+
+    canvas.width = cw;
+    canvas.height = ch;
 
     // Calculate bubble dimensions based on logical width
     GAME.bubbleDiameter = canvas.width / GAME.cols;
@@ -901,7 +919,7 @@ canvas.addEventListener('touchend', () => mouse.active = false);
 // Start Game
 startBtn.addEventListener('click', () => {
     // Need to initialize AudioContext on user interaction
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
 
     overlay.classList.remove('active');
 
